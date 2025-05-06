@@ -59,8 +59,9 @@ wss.on('connection', (ws, req) => {
 
       // Forward message to Discord
       if (message.type === 'message' && message.from === 'User') {
+        const discordMessage = **New Message from Chat**\nSession ID: \${sessionId}\\nMessage: ${message.text};
         webhookClient.send({
-          content: **New Message from Chat**\nSession ID: \${sessionId}\\nMessage: ${message.text}
+          content: discordMessage
         }).catch(err => {
           console.error('Error sending to Discord:', err);
         });
@@ -112,8 +113,9 @@ app.post('/chat/send', async (req, res) => {
     }
 
     // Forward to Discord
+    const discordMessage = **New Message**\nSession ID: \${sessionId}\\nMessage: ${trimmedText};
     webhookClient.send({
-      content: **New Message**\nSession ID: \${sessionId}\\nMessage: ${trimmedText}
+      content: discordMessage
     }).catch(err => {
       console.error('Error sending to Discord:', err);
     });
