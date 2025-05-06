@@ -60,7 +60,7 @@ wss.on('connection', (ws, req) => {
       // Forward message to Discord
       if (message.type === 'message' && message.from === 'User') {
         webhookClient.send({
-          content: `**New Message from Chat**\nSession ID: \`${sessionId}\`\nMessage: ${message.text}`
+          content: **New Message from Chat**\nSession ID: \${sessionId}\\nMessage: ${message.text}
         }).catch(err => {
           console.error('Error sending to Discord:', err);
         });
@@ -113,7 +113,7 @@ app.post('/chat/send', async (req, res) => {
 
     // Forward to Discord
     webhookClient.send({
-      content: `**New Message**\nSession ID: \`${sessionId}\`\nMessage: ${trimmedText}`
+      content: **New Message**\nSession ID: \${sessionId}\\nMessage: ${trimmedText}
     }).catch(err => {
       console.error('Error sending to Discord:', err);
     });
@@ -174,6 +174,11 @@ app.post('/reset-chat', (req, res) => {
 // Serve static files from the chat directory
 app.use('/chat', express.static(path.join(__dirname, 'public')));
 
+// Redirect root to chat interface
+app.get('/', (req, res) => {
+  res.redirect('/chat');
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -182,7 +187,7 @@ app.use((err, req, res, next) => {
 
 // Discord bot event handlers
 discordClient.on('ready', () => {
-  console.log(`Discord bot logged in as ${discordClient.user.tag}`);
+  console.log(Discord bot logged in as ${discordClient.user.tag});
 });
 
 discordClient.on('messageCreate', async (message) => {
@@ -193,7 +198,7 @@ discordClient.on('messageCreate', async (message) => {
   if (message.reference) {
     try {
       const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
-      const sessionMatch = referencedMessage.content.match(/Session ID: `([a-zA-Z0-9-]+)`/);
+      const sessionMatch = referencedMessage.content.match(/Session ID: ([a-zA-Z0-9-]+)/);
       
       if (sessionMatch) {
         const sessionId = sessionMatch[1];
@@ -213,17 +218,11 @@ discordClient.on('messageCreate', async (message) => {
   }
 });
 
-// Login to Discord
-discordClient.login(process.env.DISCORD_BOT_TOKEN).catch(err => {
-  console.error('Error logging in to Discord:', err);
-  process.exit(1);
-});
-
+// Start the server
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || 'localhost';
-
 server.listen(PORT, () => {
-  console.log(`📱 Chat Interface: http://${HOST}:${PORT}/chat`);
-  console.log('\n🚀 Server is running!\n');
-  console.log('\nPress Ctrl+C to stop the server\n');
+  console.log(Server is running on port ${PORT});
 });
+
+// Login to Discord
+discordClient.login(process.env.DISCORD_BOT_TOKEN);
