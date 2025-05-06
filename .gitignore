@@ -1,16 +1,9 @@
-# Dependencies
-node_modules/
-
-# Environment variables
-.env
-*.env
-!.env.example
-
-# System files
-.DS_Store
 AppData/
+node_modules/
+.env
 *.log
-
-# Runtime data
-storage/
 *.jtx
+.DS_Store
+.vscode/
+.idea/
+*.lock

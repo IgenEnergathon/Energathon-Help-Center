@@ -178,61 +178,21 @@
     </div>
 
     <script>
-        let ws;
-        let sessionId;
-        let reconnectAttempts = 0;
-        const maxReconnectAttempts = 5;
-        const reconnectDelay = 3000;
-
-        function connect() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.host;
-            ws = new WebSocket(`${protocol}//${host}/chat`);
-
-            ws.onopen = () => {
-                console.log('Connected to server');
-                reconnectAttempts = 0;
-                updateStatus('Connected');
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'session') {
-                        sessionId = data.sessionId;
-                        console.log('Session ID:', sessionId);
-                    } else if (data.type === 'message') {
-                        addMessage(data.text, data.from);
-                    }
-                } catch (err) {
-                    console.error('Error parsing message:', err);
-                }
-            };
-
-            ws.onclose = () => {
-                console.log('Disconnected from server');
-                updateStatus('Disconnected');
-                if (reconnectAttempts < maxReconnectAttempts) {
-                    setTimeout(() => {
-                        reconnectAttempts++;
-                        connect();
-                    }, reconnectDelay);
-                }
-            };
-
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-        }
-
-        function addMessage(text, from) {
+        function addMessage(from, text) {
             const messagesDiv = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${from.toLowerCase()}`;
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
-            contentDiv.textContent = text;
+            
+            // Handle markdown-style formatting
+            let formattedText = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic
+                .replace(/`(.*?)`/g, '<code>$1</code>');           // Code
+            
+            contentDiv.innerHTML = formattedText;
             
             const timeDiv = document.createElement('div');
             timeDiv.className = 'message-time';
@@ -244,21 +204,13 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        function updateStatus(status) {
-            const statusDiv = document.createElement('div');
-            statusDiv.className = 'status';
-            statusDiv.textContent = status;
-            document.body.appendChild(statusDiv);
-            setTimeout(() => statusDiv.remove(), 3000);
-        }
-
         function sendMessage() {
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
             
             if (text && ws.readyState === WebSocket.OPEN) {
                 // Add message to UI immediately
-                addMessage(text, 'User');
+                addMessage('User', text);
                 
                 // Send message to server
                 ws.send(JSON.stringify({
@@ -267,8 +219,81 @@
                     text: text
                 }));
                 
+                // Clear input and focus
                 input.value = '';
+                input.focus();
             }
+        }
+
+        // Add status indicator
+        function updateStatus(status, isError = false) {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'status';
+            statusDiv.textContent = status;
+            statusDiv.style.color = isError ? '#f44336' : '#4CAF50';
+            document.body.appendChild(statusDiv);
+            setTimeout(() => statusDiv.remove(), 3000);
+        }
+
+        // WebSocket connection
+        let ws;
+        let sessionId = null;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 5;
+        const RECONNECT_DELAY = 3000;
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            console.log('Connecting to WebSocket server...');
+            console.log('Connection URL:', `${protocol}//${host}/ws`);
+            
+            ws = new WebSocket(`${protocol}//${host}/ws`);
+
+            ws.onopen = () => {
+                console.log('WebSocket connection established');
+                reconnectAttempts = 0;
+                updateStatus('Connected to server');
+            };
+
+            ws.onmessage = (event) => {
+                console.log('Received WebSocket message:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'session') {
+                        sessionId = data.sessionId;
+                        console.log('Received session ID:', sessionId);
+                        updateStatus('Session established');
+                    } else if (data.type === 'message') {
+                        addMessage(data.from, data.text);
+                    } else if (data.type === 'error') {
+                        console.error('Server error:', data.text);
+                        updateStatus(data.text, true);
+                    }
+                } catch (err) {
+                    console.error('Error parsing WebSocket message:', err);
+                    updateStatus('Error processing message', true);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket connection closed');
+                updateStatus('Disconnected from server', true);
+                
+                if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    console.log(`Attempting to reconnect (${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})...`);
+                    setTimeout(connectWebSocket, RECONNECT_DELAY);
+                    reconnectAttempts++;
+                } else {
+                    console.error('Max reconnection attempts reached');
+                    updateStatus('Connection lost. Please refresh the page.', true);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateStatus('Connection error. Please check your internet connection.', true);
+            };
         }
 
         // Event Listeners
@@ -280,7 +305,7 @@
         });
 
         // Initial connection
-        connect();
+        connectWebSocket();
     </script>
 </body>
 </html>
